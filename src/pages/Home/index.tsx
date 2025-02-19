@@ -1,24 +1,11 @@
 import { HandPalm, Play } from "phosphor-react";
-import { CountdownContainer, FormContainer, HomeContainer, MinutesAmountInput, Separator, StartCountdownButton, StopCountdownButton, TextInput } from "./style";
-import {useForm} from "react-hook-form"; //aqui é o useForm - hook, para chamarmos as funções de form/inputs (onChange, onBlur, etc) e recuperarmos fora da tag
+import { HomeContainer, StartCountdownButton, StopCountdownButton } from "./style";
+import {FormProvider, useForm} from "react-hook-form"; //aqui é o useForm - hook, para chamarmos as funções de form/inputs (onChange, onBlur, etc) e recuperarmos fora da tag
 import {zodResolver} from "@hookform/resolvers/zod"; //aqui é a ponte (resolver) para usar zod no react-hook-for - useForm
-import * as zod from "zod"; //vamos criar o esquema de validação com zod
-import { useEffect, useState } from "react";
-import {differenceInSeconds, interval} from "date-fns";
+import { createContext, useState } from "react";
 import { NewCycleForm } from "./NewCycleForm";
 import { Countdown } from "./Countdown";
-
-const newCycleFormValidationSchema = zod.object({
-    task: zod.string().min(1, "Informe a tarefa"),
-    minutesAmount: zod.number().min(1, "O ciclo precisa ser no mínimo de 60 minutos").max(60, "O ciclo precisa ser no máximo de 60 minutos"),
-})
-
-// interface NewCycleFormData{ //nem preciso utilizar isso mais, pois o zod consegue extrair a tipagem automaticamente
-//     task: string;
-//     minutesAmount: number;
-// }
-
-type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>; //não consigo usar uma variável javascript dentro do meu typescript ( <> ); lembrar sempre disso! Por isso utilizar typeof
+import * as zod from "zod";
 
 interface Cycle{
     id: string;
@@ -29,6 +16,23 @@ interface Cycle{
     finishedDate?: Date;
 }
 
+interface CyclesContextType {
+    activeCycle: Cycle | undefined;
+    activeCycleId: string | null;
+    amountSecondsPassed: number;
+    markCurrentCycleAsFinished: () => void;
+    setSecondsPassed: (seconds: number) => void;
+}
+
+const newCycleFormValidationSchema = zod.object({
+    task: zod.string().min(1, "Informe a tarefa"),
+    minutesAmount: zod.number().min(1, "O ciclo precisa ser no mínimo de 60 minutos").max(60, "O ciclo precisa ser no máximo de 60 minutos"),
+});
+
+type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>; //não consigo usar uma variável javascript dentro do meu typescript ( <> ); lembrar sempre disso! Por isso utilizar typeof
+
+export const CyclesContext = createContext({} as CyclesContextType);
+
 export function Home() {
 
     //controlled components é você ficar monitorando o tempo todo com states, e refletindo nos forms
@@ -37,9 +41,12 @@ export function Home() {
 
     const [cycles, setCycles] = useState<Cycle[]>([]);
     const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+
     const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
 
-    const {register, handleSubmit, watch, reset} = useForm<NewCycleFormData>({
+    const activeCycle = cycles.find(cycle => cycle.id === activeCycleId); //recebendo o objeto Cycle que contém o id do cycle ativo naquele momento (este id é definido na função de handle)
+
+    const newCycleForm = useForm<NewCycleFormData>({
         resolver: zodResolver(newCycleFormValidationSchema),
         defaultValues: {
             task: "",
@@ -47,45 +54,7 @@ export function Home() {
         }
     });
 
-    const activeCycle = cycles.find(cycle => cycle.id === activeCycleId); //recebendo o objeto Cycle que contém o id do cycle ativo naquele momento (este id é definido na função de handle)
-
-    const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0; //transformando tempo de minutos em segundos
-    const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
-
-    const minutesAmount = Math.floor(currentSeconds / 60); //math.floor arredonda pra baixo (Math.ceil é pra cima - Math.round é se acima de .5, arredonda pra cima, caso contrário pra baixo)
-    const secondsAmount = currentSeconds % 60;
-
-    const minutes = String(minutesAmount).padStart(2, "0"); //adicionando dois numeros pra lidar na interface ('09 segundos'  e não '9 segundos' - exemplo)
-    const seconds = String(secondsAmount).padStart(2, "0");
-
-    useEffect(()=>{
-        let interval:number;
-        if(activeCycle){
-             interval = setInterval(() => { //quando em interval pra limpar ela no return, que é chamado assim que useEffect for executado novamente
-                const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
-                
-                if(secondsDifference >= totalSeconds){
-                    setCycles(state => state.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
-                        if(cycle.id === activeCycleId){ //localiza o ciclo em que estamos por meio do id do ciclo atual
-                            return {...cycle, interruptedDate: new Date()} //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
-                        } else {
-                            return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
-                        }
-                    }) );
-
-                    setAmountSecondsPassed(totalSeconds);
-                    clearInterval(interval);
-                } else{
-                    setAmountSecondsPassed(secondsDifference); //se não finalizou o ciclo, continua decrementando; 
-                }
-                
-            }, 1000)
-        }
-
-        return () => {
-            clearInterval(interval);
-        }
-    }, [activeCycle, totalSeconds, activeCycleId]);
+    const { handleSubmit, watch, reset} = newCycleForm;
 
     function handleCreateNewCycle(data: NewCycleFormData){
         const id = String(new Date().getTime());
@@ -118,14 +87,19 @@ export function Home() {
 
     }
 
+    function markCurrentCycleAsFinished(){
+        setCycles(state => state.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
+            if(cycle.id === activeCycleId){ //localiza o ciclo em que estamos por meio do id do ciclo atual
+                return {...cycle, interruptedDate: new Date()} //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
+            } else {
+                return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
+            }
+        }) );
+    }
 
-
-
-    useEffect(() => {
-        if(activeCycle){
-            document.title = `${minutes}:${seconds}`
-        }
-    }, [minutes,seconds])
+    function setSecondsPassed(seconds: number){
+        setAmountSecondsPassed(seconds);
+    }
 
     const task = watch("task"); //controlled component - fica sempre em watch - como se usassemos state - baixa performance, mas bom para aplicações menores e controle total; ou seja, sempre que eu mudar meu input "task" ele está em watch, logo vai renderizar, como se fosse um state mesmo, pois alterei o valor do input
     const isSubmitDisabled = !task;
@@ -133,23 +107,28 @@ export function Home() {
     return (
         <HomeContainer>
             <form action="" onSubmit={handleSubmit(handleCreateNewCycle)}>
-                <NewCycleForm />
-                <Countdown/>
-                
-                { 
+                <CyclesContext.Provider value={{activeCycle, activeCycleId, amountSecondsPassed, markCurrentCycleAsFinished, setSecondsPassed}}>
+                    <FormProvider {...newCycleForm}>
+                        <NewCycleForm /> 
+                    </FormProvider>
+                    <Countdown />
+                </CyclesContext.Provider>
+
+                {  
                     activeCycle ? (
                         <StopCountdownButton type="button" onClick={handleInterruptCycle}>
                             <HandPalm size={24} />
                             Interromper
                         </StopCountdownButton> 
                     ) : (
-                        <StartCountdownButton type="submit" disabled={isSubmitDisabled} >
+                        <StartCountdownButton type="submit"  disabled={isSubmitDisabled} >
                             <Play size={24} />
                             Começar
                         </StartCountdownButton>
                     )                   
                 }
             </form>
+            
         </HomeContainer>
     )
 }
