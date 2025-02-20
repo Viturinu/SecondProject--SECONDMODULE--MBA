@@ -1,11 +1,11 @@
 import { useContext, useEffect } from "react";
 import { CountdownContainer, Separator } from "./style";
 import { differenceInSeconds } from "date-fns";
-import { CyclesContext } from "..";
+import { CyclesContext } from "../../../contexts/CycleContext";
 
-export function Countdown(){
+export function Countdown() {
 
-    const {activeCycle, activeCycleId, amountSecondsPassed, markCurrentCycleAsFinished, setSecondsPassed} = useContext(CyclesContext);
+    const { activeCycle, activeCycleId, amountSecondsPassed, markCurrentCycleAsFinished, setSecondsPassed } = useContext(CyclesContext);
 
     const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0; //transformando tempo de minutos em segundos
 
@@ -16,22 +16,22 @@ export function Countdown(){
 
     const minutes = String(minutesAmount).padStart(2, "0"); //adicionando dois numeros pra lidar na interface ('09 segundos'  e não '9 segundos' - exemplo)
     const seconds = String(secondsAmount).padStart(2, "0");
-    
-    useEffect(()=>{
-        let interval:number;
-        
-        if(activeCycle){
-             interval = setInterval(() => { //quando em interval pra limpar ela no return, que é chamado assim que useEffect for executado novamente
+
+    useEffect(() => {
+        let interval: number;
+
+        if (activeCycle) {
+            interval = setInterval(() => { //quando em interval pra limpar ela no return, que é chamado assim que useEffect for executado novamente
                 const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
-                
-                if(secondsDifference >= totalSeconds){
+
+                if (secondsDifference >= totalSeconds) {
                     markCurrentCycleAsFinished();
                     setSecondsPassed(totalSeconds);
                     clearInterval(interval);
-                } else{
+                } else {
                     setSecondsPassed(secondsDifference); //se não finalizou o ciclo, continua decrementando; 
                 }
-                
+
             }, 1000)
         }
 
@@ -41,12 +41,12 @@ export function Countdown(){
     }, [activeCycle, totalSeconds, activeCycleId, markCurrentCycleAsFinished]);
 
     useEffect(() => {
-        if(activeCycle){
+        if (activeCycle) {
             document.title = `${minutes}:${seconds}`
         }
-    }, [minutes,seconds]);
+    }, [minutes, seconds]);
 
-    return(
+    return (
         <CountdownContainer>
             <span>{minutes[0]}</span>
             <span>{minutes[1]}</span>
@@ -54,6 +54,5 @@ export function Countdown(){
             <span>{seconds[0]}</span>
             <span>{seconds[1]}</span>
         </CountdownContainer>
-    ) 
-}    
-    
+    )
+}
