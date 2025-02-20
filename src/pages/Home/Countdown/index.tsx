@@ -9,7 +9,7 @@ export function Countdown() {
 
     const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0; //transformando tempo de minutos em segundos
 
-    const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
+    const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0; //aqui que controla o tempo do decrementador, pois tudo deriva do currentSeconds
 
     const minutesAmount = Math.floor(currentSeconds / 60); //math.floor arredonda pra baixo (Math.ceil é pra cima - Math.round é se acima de .5, arredonda pra cima, caso contrário pra baixo)
     const secondsAmount = currentSeconds % 60;
@@ -18,13 +18,13 @@ export function Countdown() {
     const seconds = String(secondsAmount).padStart(2, "0");
 
     useEffect(() => {
-        let interval: number;
+        let interval: number;  //tipo number, não sei o porquê.
 
         if (activeCycle) {
             interval = setInterval(() => { //quando em interval pra limpar ela no return, que é chamado assim que useEffect for executado novamente
                 const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
 
-                if (secondsDifference >= totalSeconds) {
+                if (secondsDifference >= totalSeconds){
                     markCurrentCycleAsFinished();
                     setSecondsPassed(totalSeconds);
                     clearInterval(interval);
