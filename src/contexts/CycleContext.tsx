@@ -31,47 +31,57 @@ interface CyclesContextProviderProps {
     children: ReactNode; //ReactNode é com html/tsx/jsx válido
 }
 
-interface CyclesState{
+interface CyclesState {
     cycles: Cycle[];
-    activeCycleId: string| null;
+    activeCycleId: string | null;
 
 }
 
 export function CyclesContextProvider({ children }: CyclesContextProviderProps) {
 
-    const [cyclesState, dispatch] = useReducer((state: CyclesState, action:any) => {
-        console.log(state);
-        console.log(action);
+    const [cyclesState, dispatch] = useReducer((state: CyclesState, action: any) => { //dispatch representa a função para fazer algo no reducer, já action é um argumento usado para trabalhar junto ao dispatch; cycleState é o estado que será manipulado;
 
-        if(action.type === "ADD_NEW_CYCLE"){
-            return {
-                ...state,
-                cycles: [...state.cycles, action.payload.newCycle],
-                activeCycleId: action.payload.newCycle.id,
-            }; //retorno dessa função é o novo valor que esse estado (cycles) vai receber
+        switch (action.type) {
+            case "ADD_NEW_CYCLE":
+                return {
+                    // ...state,
+                    cycles: [...state.cycles, action.payload.newCycle],
+                    activeCycleId: action.payload.newCycle.id,
+                }; //retorno dessa função é o novo valor que esse estado (cycles) vai receber
+            case "INTERRUPT_CURRENT_CYCLE":
+                return {
+                    // ...state,
+                    cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
+                        if (cycle.id === state.activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
+                            return { ...cycle, interruptedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
+                        } else {
+                            return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
+                        }
+                    }),
+                    activeCycleId: null,
+                }
+            case "MARK_CURRENT_CYCLE_AS_FINISHED":
+                return {
+                    // ...state,
+                    cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
+                        if (cycle.id === state.activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
+                            return { ...cycle, finishedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
+                        } else {
+                            return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
+                        }
+                    }),
+                    activeCycleId: null,
+                }
+            default: return state; //caso não entre em nenhum dos if (meio que impossível, mas necessário)
+
         }
 
-        if(action.type === "INTERRUPT_CURRENT_CYCLE"){
-            return {
-                ...state,
-                cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
-                    if (cycle.id === state.activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
-                        return { ...cycle, interruptedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
-                    } else {
-                        return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
-                    }
-                }),
-                activeCycleId: null,
-            }
-        }
-        
-        return state;
     }, {
         cycles: [],
         activeCycleId: null,
     });
 
-    const {cycles, activeCycleId} = cyclesState;
+    const { cycles, activeCycleId } = cyclesState;
 
     // const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
 
@@ -111,7 +121,7 @@ export function CyclesContextProvider({ children }: CyclesContextProviderProps) 
         dispatch({
             type: "ADD_NEW_CYCLE",
             payload: {
-                data: newCycle,
+                newCycle,
             },
         });
         //setCycles((cycles) => [...cycles, newCycle]); //[...cycles, newCycle] só isso já funciona (coloquei cycles => pra memorizar que a escrita completa é assim) (neste caso tem que ser com arrow function, pois o estado depende do estado anterior (...state), logo tem que usar arrowFunction pra evitar erros de atualizações inconsistentes (closures) )
