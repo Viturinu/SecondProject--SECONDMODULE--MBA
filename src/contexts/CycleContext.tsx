@@ -1,17 +1,11 @@
-import { createContext, ReactNode, useReducer, useState } from "react";
+import { createContext, ReactNode, useEffect, useReducer, useState } from "react";
+import { Cycle, cyclesReducer } from "../reducers/cycles/reducer";
+import { addNewCycleAction, interruptCurrentCycleAction, markCurrentCycleAsFinishedAction } from "../reducers/cycles/actions";
+import { differenceInSeconds } from "date-fns";
 
 interface CreateCycleData {
     task: string;
     minutesAmount: number;
-}
-
-interface Cycle {
-    id: string;
-    task: string;
-    minutesAmount: number;
-    startDate: Date;
-    interruptedDate?: Date;
-    finishedDate?: Date;
 }
 
 interface CyclesContextType {
@@ -31,71 +25,46 @@ interface CyclesContextProviderProps {
     children: ReactNode; //ReactNode é com html/tsx/jsx válido
 }
 
-interface CyclesState {
-    cycles: Cycle[];
-    activeCycleId: string | null;
-
-}
-
 export function CyclesContextProvider({ children }: CyclesContextProviderProps) {
 
-    const [cyclesState, dispatch] = useReducer((state: CyclesState, action: any) => { //dispatch representa a função para fazer algo no reducer, já action é um argumento usado para trabalhar junto ao dispatch; cycleState é o estado que será manipulado;
-
-        switch (action.type) {
-            case "ADD_NEW_CYCLE":
-                return {
-                    // ...state,
-                    cycles: [...state.cycles, action.payload.newCycle],
-                    activeCycleId: action.payload.newCycle.id,
-                }; //retorno dessa função é o novo valor que esse estado (cycles) vai receber
-            case "INTERRUPT_CURRENT_CYCLE":
-                return {
-                    // ...state,
-                    cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
-                        if (cycle.id === state.activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
-                            return { ...cycle, interruptedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
-                        } else {
-                            return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
-                        }
-                    }),
-                    activeCycleId: null,
-                }
-            case "MARK_CURRENT_CYCLE_AS_FINISHED":
-                return {
-                    // ...state,
-                    cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
-                        if (cycle.id === state.activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
-                            return { ...cycle, finishedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
-                        } else {
-                            return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
-                        }
-                    }),
-                    activeCycleId: null,
-                }
-            default: return state; //caso não entre em nenhum dos if (meio que impossível, mas necessário)
-
-        }
-
-    }, {
+    const [cyclesState, dispatch] = useReducer(cyclesReducer , {
         cycles: [],
         activeCycleId: null,
+    }, (initialState) => { //função apra inicializar esse estado/reducer (o parâmetro anterior também faz isso por meio de um objeto; já nessa aqui podemos colocar alguma lógica)
+        const storedStateAsJSON = localStorage.getItem("@ignite-timer:cycles-state");
+
+        if(storedStateAsJSON){
+            return JSON.parse(storedStateAsJSON);
+        }
+
+        return initialState
+
+            // cycles: [],
+            // activeCycleId: null,  
     });
 
     const { cycles, activeCycleId } = cyclesState;
 
     // const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
 
-    const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
-
     const activeCycle = cyclesState.cycles.find(cycle => cycle.id === cyclesState.activeCycleId); //recebendo o objeto Cycle que contém o id do cycle ativo naquele momento (este id é definido na função de handle)
 
+    function setSecondsPassed(seconds: number) {
+        setAmountSecondsPassed(seconds);
+    }
+
+    const [amountSecondsPassed, setAmountSecondsPassed] = useState(() => { //colocar uma função no useState é bom para trabalhar um valor de forma dinâmica, em uma função, assim já setamos o valor com a função desejada, ao invés de definir zero, e um useEffect, por exemplo, executar alguma logica pra atualizar o valor (é possível também, mas em alguns casos, como agora no pomnodoro, quando iniciamos a contagem ele fica zerando pra depois atuaçizar; logo, é melhor que já se faça a logica dentro de uma função dentro da inicialização do useState())
+
+        if(activeCycle){ //se já existir um activeCycle, então
+            return  differenceInSeconds(new Date(), new Date(activeCycle.startDate)); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
+        }
+        
+        return 0;  
+    });
+
+
     function markCurrentCycleAsFinished() {
-        dispatch({
-            type: "MARK_CURRENT_CYCLE_AS_FINISHED",
-            payload: {
-                activeCycleId,
-            },
-        });
+        dispatch(markCurrentCycleAsFinishedAction());
         // setCycles(state => state.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
         //     if (cycle.id === activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
         //         return { ...cycle, interruptedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção
@@ -103,10 +72,6 @@ export function CyclesContextProvider({ children }: CyclesContextProviderProps) 
         //         return cycle; //se não encontrar retorna o ciclo normalmente, sem data de interrupação
         //     }
         // }));
-    }
-
-    function setSecondsPassed(seconds: number) {
-        setAmountSecondsPassed(seconds);
     }
 
     function createNewCycle(data: CreateCycleData) {
@@ -118,12 +83,7 @@ export function CyclesContextProvider({ children }: CyclesContextProviderProps) 
             minutesAmount: data.minutesAmount,
             startDate: new Date(),
         }
-        dispatch({
-            type: "ADD_NEW_CYCLE",
-            payload: {
-                newCycle,
-            },
-        });
+        dispatch(addNewCycleAction(newCycle));
         //setCycles((cycles) => [...cycles, newCycle]); //[...cycles, newCycle] só isso já funciona (coloquei cycles => pra memorizar que a escrita completa é assim) (neste caso tem que ser com arrow function, pois o estado depende do estado anterior (...state), logo tem que usar arrowFunction pra evitar erros de atualizações inconsistentes (closures) )
         //setActiveCycleId(id); //define o id do ciclo que está ativo
         setAmountSecondsPassed(0); //pois acabou de iniciar
@@ -132,12 +92,7 @@ export function CyclesContextProvider({ children }: CyclesContextProviderProps) 
     }
 
     function interruptCurrentCycle() {
-        dispatch({
-            type: "INTERRUPT_CURRENT_CYCLE",
-            payload: {
-                activeCycleId,
-            },
-        });
+        dispatch(interruptCurrentCycleAction());
         // setCycles(state => state.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
         //     if (cycle.id === activeCycleId) { //localiza o ciclo em que estamos por meio do id do ciclo atual
         //         return { ...cycle, interruptedDate: new Date() } //quando encontrar, retorna o ciclo e todas as suas propriedades mais uma data de interrupção, pois estamos interrompendo este ciclo
@@ -148,8 +103,12 @@ export function CyclesContextProvider({ children }: CyclesContextProviderProps) 
 
         // setActiveCycleId(null); //setando o id do ciclo atual para null, pois estamos saindo desse ciclo.
         document.title = document.title = "Ignite Timer" //voltando titulo da pagina pro padrão
-
     }
+
+    useEffect(() => {
+        const stateJSON = JSON.stringify(cyclesState); //tem que ser texto, é a forma que o localStorage grava as informações
+        localStorage.setItem("@ignite-timer:cycles-state", stateJSON ); //colocar sempre nome da aplicação:alguma coisa, pois se for muito generico e tiver trabalahdno em outros projetos, pode sobrescrever esses valores
+    }, [cyclesState])
     return (
         <CyclesContext.Provider
             value={{

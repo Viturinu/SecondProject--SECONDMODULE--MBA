@@ -22,7 +22,7 @@ export function Countdown() {
 
         if (activeCycle) {
             interval = setInterval(() => { //quando em interval pra limpar ela no return, que é chamado assim que useEffect for executado novamente
-                const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
+                const secondsDifference = differenceInSeconds(new Date(), new Date(activeCycle.startDate)); //ele fica subtraindo a data atual pela setada do inicio do ciclo, num intervalo (não usamos o intervalo direto pois ele pode errar, não é 100% correto, especialmente se mudar de aba)
 
                 if (secondsDifference >= totalSeconds){
                     markCurrentCycleAsFinished();
