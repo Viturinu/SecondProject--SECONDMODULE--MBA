@@ -1,5 +1,4 @@
 import { ActionTypes } from "./actions";
-import { produce } from "immer";
 
 export interface Cycle {
     id: string;
@@ -16,10 +15,10 @@ interface CyclesState {
 
 }
 
-export function cyclesReducer(state: CyclesState, action: any){ //dispatch representa a função para fazer algo no reducer, já action é um argumento usado para trabalhar junto ao dispatch; cycleState é o estado que será manipulado;
+export function cyclesReducer(state: CyclesState, action: any) { //dispatch representa a função para fazer algo no reducer, já action é um argumento usado para trabalhar junto ao dispatch; cycleState é o estado que será manipulado;
 
     switch (action.type) {
-        case ActionTypes.ADD_NEW_CYCLE:{ //era String normal, daí criamos um enum pra ficar mais legível e manutenivel
+        case ActionTypes.ADD_NEW_CYCLE: { //era String normal, daí criamos um enum pra ficar mais legível e manutenivel
             return { //esse return sempre retorna o estado/valor que será alocado lá no const [cyclesState, dispatch] = useReducer(cyclesReducer , ...
                 // ...state,
                 cycles: [...state.cycles, action.payload.newCycle],
@@ -30,7 +29,7 @@ export function cyclesReducer(state: CyclesState, action: any){ //dispatch repre
             //     draft.activeCycleId = action.payload.activeCycleId;
             // });
         }
-        case ActionTypes.INTERRUPT_CURRENT_CYCLE:{
+        case ActionTypes.INTERRUPT_CURRENT_CYCLE: {
             return {
                 // ...state,
                 cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
@@ -42,7 +41,7 @@ export function cyclesReducer(state: CyclesState, action: any){ //dispatch repre
                 }),
                 activeCycleId: null,
             }
-        
+
             // const currentCycleIndex = state.cycles.findIndex(cycle => {
             //     return cycle.id === state.activeCycleId; //percorrendo array pra achar o objeto que contem o activeCycleId (que também é salvo como uma outra variável)
             // });
@@ -50,14 +49,14 @@ export function cyclesReducer(state: CyclesState, action: any){ //dispatch repre
             // if(currentCycleIndex < 0){
             //     return state;
             // }
-        
+
             // return produce(state, (draft) => {
             //     draft.activeCycleId = null;
             //     draft.cycles[currentCycleIndex].interruptedDate = new Date();
             // })
         }
 
-        case ActionTypes.MARK_CURRENT_CYCLE_AS_FINISHED:{
+        case ActionTypes.MARK_CURRENT_CYCLE_AS_FINISHED: {
             return {
                 // ...state,
                 cycles: state.cycles.map(cycle => { //percorre todos os ciclos que está salvo no estado e retorna todos os ciclos para atualizar o estando, sendo um deles com sua data de interrupção, quando entra na condicional true 
@@ -76,7 +75,7 @@ export function cyclesReducer(state: CyclesState, action: any){ //dispatch repre
             // if(currentCycleIndex < 0){
             //     return state;
             // }
-        
+
             // return produce(state, (draft) => {
             //     draft.activeCycleId = null;
             //     draft.cycles[currentCycleIndex].finishedDate = new Date();
